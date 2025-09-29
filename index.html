@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    <script src="./js/menu.js"></script>
+    <script src="./js/vue.global.js"></script>
+    <script src="./js/relayx-api.umd.js"></script>  
+    <link href="./css/style.css" rel="stylesheet"/>
+    <title>RelayApp-HTML5-Template</title>  
+</head>
+
+<body >
+  <div id="app">
+  <div v-if="isShow">
+    <div class="page-content" style="padding-bottom: 60px;">
+      <div v-if="isOpen" class="overlay" :class="['over', isOpen ? 'active' : '']"  @click="toggleMenu"></div>
+      <api-header @toggle-menu="toggleMenu"></api-header>
+      <div class="page-main">
+        <api-menu :menu-list="menuList" :change-nav="changeNav" :is-open="isOpen" @toggle-menu="toggleMenu"></api-menu>
+
+        <div class="form-box">
+          
+          
+          <div class="d-title" :style="{ marginTop: '0px' }" v-if="parameter.list.length>0">payload</div>
+
+          <div v-for="(item, index) in parameter.list" :key="index" class="form-col">
+            <div class="d-label"><span v-if="item.required">*</span>{{ item.label }}</div>
+            <div v-if="item.element === 'select'" class="select-box">
+              <select v-model="inputs[index]">
+                <option v-for="opt in item.options || []" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+            <div class="input-box" v-else>
+              <textarea v-model="inputs[index]" :rows="['content','serviceKey','image','video'].includes(item.label) ? 3 : 1"></textarea>
+            </div>
+          </div>
+
+          <div v-if="parameter.signList && parameter.signList.length>0">
+            <div class="d-title">sign</div>
+      
+            <div 
+              class="form-col" 
+              v-for="(item, index) in parameter.signList" 
+              :key="index"
+            >
+              <div class="d-label">
+                <span v-if="item.required">*</span>{{ item.label }}
+              </div>
+
+              <div class="input-box">
+                <textarea
+                  class="display-flex"
+                  :value="item.label === 'content' ? signContent : item.label === 'signature' ? signSignature : ''"
+                  @input="(e) => handleInputSign(e, item)"
+                  :rows="item.label === 'content' || item.label === 'signature' ? 3 : 1"
+                ></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="btn-box">
+            <button class="btn-default" @click="handleSubmit">Confirm</button>
+          </div>
+
+          <div v-if="result" class="resultBox">
+            <div class="d-label">Return</div>
+            <div class="d-result">
+                <pre v-html="result"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <script>
+  
+     const APIHeader = Vue.defineComponent({
+      name: 'ApiHeader',
+      emits: ['toggle-menu'],
+      setup(_, { emit }) {
+        const logo = './images/logo.png'
+        const logoTitle = './images/logo_title.png'
+        const style = Vue.computed(() => ({
+          background: '#fff',
+          paddingTop: `${(window.safeAreaTop || 0) + 20}px`
+        }))
+        const toggleMenu = () => emit('toggle-menu')
+        return { logo, logoTitle, style, toggleMenu }
+      },
+      template: `
+        <div class="api-header api-common-header" :style="style">
+          <svg class="pointer" viewBox="64 64 896 896" width="28" height="28" fill="#333" @click="toggleMenu">
+            <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zM400 646c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zM912 160H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM912 792H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM142.4 642.1L298.7 519a8.84 8.84 0 000-13.9L142.4 381.9c-5.8-4.6-14.4-.5-14.4 6.9v246.3a8.9 8.9 0 0014.4 7z"/>
+          </svg>
+          <div class="image-box">
+            <img class="logo" :src="logo" />
+            <img class="logoTitle" :src="logoTitle" />
+          </div>
+        </div>
+      `
+    });
+
+    const APIMenu = Vue.defineComponent({
+      name: 'ApiMenu',
+      props: ['menuList', 'changeNav', 'isOpen'],
+      emits: ['toggle-menu'],
+      setup(props, { emit }) {
+        const curIndex = Vue.ref(0)
+        const logo = './images/logo.png'
+        const logoTitle = './images/logo_title.png'
+        const cancelIcon = './images/cancel.png'
+        const pageJump = (index, item) => {
+          curIndex.value = index
+          props.changeNav(item)
+        }
+        const toggleMenu = () => emit('toggle-menu')
+        const style = Vue.computed(() => ({
+          background: '#fff',
+          paddingTop: `${(window.safeAreaTop || 0) + 20}px`
+        }))
+        const menuBottomStyle = Vue.computed(() => ({
+          paddingBottom: `${(window.safeAreaBottom || 0) + 18}px`
+        }))
+        return { curIndex, logo, logoTitle, cancelIcon, pageJump, toggleMenu, style, menuBottomStyle }
+      },
+      template: `
+        <div :class="['menu-sidebar', isOpen ? 'active' : '']">
+          <div class="api-header display-flex flex-zbetween mobile-menu-header" :style="style">
+            <div class="image-box">
+              <img class="logo logo1" :src="logo" />
+              <img class="logoTitle" :src="logoTitle" />
+            </div>
+          </div>
+          <ul>
+            <li v-for="(item, index) in menuList" :key="index" :class="['pointer', curIndex === index ? 'active' : '']" @click="pageJump(index, item)">
+              {{ item.name }}
+            </li>
+          </ul>
+          <div class="menu-close" :style="menuBottomStyle">
+            <div class="display-flex flex-cCenter flex-zCenter pointer"  @click="toggleMenu">
+              <img :src="cancelIcon" />
+            </div>
+          </div>
+        </div>
+      `
+    });
+
+   
+    const app = Vue.createApp({
+      setup() {
+
+        const isShow = Vue.ref(false)
+        const relayClient = new window.MessageHandler.RelayXClient({timeout:50000});
+        // Original data to be signed, including sub-site address, expiration, level, version, etc., formatted as a JSON string and encoded in Base64
+        const _signContent = ''
+        // Signature data, represented in Base64 encoding format
+        const _signature = ''
+        const isOpen = Vue.ref(false)
+        // Return the result of the API call
+        const result = Vue.ref('')
+        // Initialize API menu
+        const parameter = Vue.ref(menuList[0])
+        //Initialize API parameters
+        const inputs = Vue.ref(parameter.value.list.map(i => i.value))
+         
+        const signContent = Vue.ref(_signContent)
+        const signSignature = Vue.ref(_signature)
+
+        /**
+       * Format a JavaScript object into a readable JSON-like string for HTML display.
+       * - Indents the JSON with 2 spaces
+       * - Removes quotes around property names
+       * - Replaces line breaks with <br/> for HTML rendering
+       * 
+       * @param {Object} obj - The object to format
+       * @returns {string} - A formatted HTML-friendly string
+       */
+
+        function formatJson(obj) {
+           return JSON.stringify(obj, null, 2).replace(/"([^"\n]+)":/g, '$1:').replace(/\n/g, '<br/>')
+        }
+
+        const handleInputSign = (e,item) =>{
+          const target = e.target
+      
+          if (!target) return; // security check
+          if(item.label==="signature"){
+            signSignature.value = target.value
+          }else if(item.label==="content"){
+            signContent.value = target.value
+          }
+          
+        }
+
+        // Get the safe area of the mobile device to ensure proper page display
+        relayClient.getSafeAreaInsets().then(res=>{
+          if(res.code==200){
+              window.safeAreaBottom = res.result.safeAreaBottom
+              window.safeAreaTop = res.result.safeAreaTop
+          }
+          isShow.value = true
+        }).catch(error=>{
+           window.safeAreaTop = 10
+           window.safeAreaBottom = 10
+          isShow.value = true
+        })
+       
+        // Show and hide the menu
+        const toggleMenu = () => {
+          isOpen.value = !isOpen.value
+        }
+
+        // Toggle menu on click and update the page UI accordingly
+        const changeNav = (item) => {
+          parameter.value = item
+          inputs.value = item.list.map(i => i.value) // Initialize parameters
+          isOpen.value = false
+          result.value = '' // Return initialization result
+        }
+
+        const handleFileChange = (event) => {
+          const file = event.target.files[0]
+          if (!file) return
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            const base64Data = reader.result
+            inputs.value[0] = 'base64'
+            inputs.value[1] = base64Data
+          }
+          reader.readAsDataURL(file)
+        }
+
+        /*Sub-site sends a message to the main site*/
+        const handleSubmit = async () => {
+          const param = {}
+          for (let i = 0; i < parameter.value.list.length; i++) {
+            const temp = parameter.value.list[i]
+            if (inputs.value[i] !== '') {
+              if (parameter.value.name === 'connectCocoPay') {
+                // Special handling for connectCocoPay — split input by comma
+                param[temp.label] = inputs.value[i].split(",")
+                // Special handling for sendServiceMessage — parse JSON if content
+              } else if (parameter.value.name === 'sendServiceMessage') {
+                if (temp.label === 'content') {
+                  try {
+                    param[temp.label] = JSON.parse(inputs.value[i])
+                  } catch {
+                    param[temp.label] = inputs.value[i]
+                  }
+                } else {
+                  param[temp.label] = inputs.value[i]
+                }
+              } else if(parameter.value.name==="openURL"){
+                      if(temp.label==="useSystemOpen"){
+                          if(inputs.value[i]!==""){
+                              if(inputs.value[i] === "true" || inputs.value[i] === "false") {
+                                  param[temp.label] = inputs.value[i] === "true"
+                              }else{
+                                  param[temp.label]  = inputs.value[i]
+                              }
+                          }
+                        
+                      }else{
+                        param[temp.label] = inputs.value[i]
+                      }
+                  }else if(parameter.value.name==="getAccount"){
+                    param[temp.label] = inputs.value[i].toString()
+                  }
+              
+              else {
+                // General handling
+                param[temp.label] = temp.type === 'Int' ? Number(inputs.value[i]) : inputs.value[i]
+              }
+            }
+          }
+              // Send the message using the window.
+            const method = parameter.value.name
+            const sign ={
+                content:signContent.value,
+                signature:signSignature.value
+            }
+
+              if(method==="getLanguage" || method==="getSafeAreaInsets" || method==="scanQRCode" || method==="getExtendedData"){
+                try{
+                   const _result = await relayClient[method]()
+                   result.value = formatJson(_result)
+                }catch(error){
+                   result.value = formatJson(error)
+                }
+
+              }else if(method==="checkServiceStatus"){
+                try{
+                  const _result = await relayClient[method](sign)
+                  result.value = formatJson(_result)
+                }catch(error){
+                  result.value = formatJson(error)
+                }
+                
+              }else if(method==="registerService" || method==="sendServiceMessage"){
+                try{
+                  const _result = await relayClient[method](param,sign)
+                  result.value = formatJson(_result)
+                }catch(error){
+                  result.value = formatJson(error)
+                }
+               
+              }else{
+                try{
+                  const _result = await relayClient[method](param)
+                  result.value = formatJson(_result)
+                }catch(error){
+                  
+                  result.value = formatJson(error)
+                }
+              }
+
+        }
+
+        return {
+          parameter,
+          inputs,
+          isOpen,
+          result,
+          menuList,
+          isShow,
+          toggleMenu,
+          changeNav,
+          handleFileChange,
+          handleSubmit,
+          handleInputSign,
+          signContent,
+          signSignature
+        }
+      }
+    })
+
+    app.component('api-header', APIHeader)
+    app.component('api-menu', APIMenu)
+    app.mount('#app')
+  </script>
+</body>
+</html>
